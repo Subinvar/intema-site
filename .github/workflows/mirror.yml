@@ -7,18 +7,22 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout full history
+      - name: Checkout full history (no creds)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false   # <-- критично: не внедрять GITHUB_TOKEN
 
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Явно проверяем, что секреты существуют,
-      # и собираем URL с PAT (если нет — падаем с понятной ошибкой)
+      # На всякий случай: убрать лишний extraheader, если вдруг появился
+      - name: Remove GitHub extraheader (safety)
+        run: |
+          git config --global --unset-all http.https://github.com/.extraheader || true
+
       - name: Build mirror URL
         id: vars
         shell: bash
@@ -28,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${MIRROR_USERNAME:-}" ] || [ -z "${MIRROR_TOKEN:-}" ]; then
-            echo "::error::Secrets MIRROR_USERNAME or MIRROR_TOKEN are empty (set them in Settings → Secrets and variables → Actions)."
+            echo "::error::Secrets MIRROR_USERNAME or MIRROR_TOKEN are empty."
             exit 1
           fi
           echo "url=https://${MIRROR_USERNAME}:${MIRROR_TOKEN}@github.com/Subinvar/intema-site-mirror.git" >> "$GITHUB_OUTPUT"
@@ -39,13 +43,11 @@ jobs:
           set -euo pipefail
           git remote remove public || true
           git remote add public "${{ steps.vars.outputs.url }}"
-          echo "== git remote -v =="
           git remote -v
-          echo "== auth check =="
           git ls-remote --heads public
 
       - name: Push main to mirror (force)
         run: |
           git push -f public HEAD:main
-          # теги при желании:
+          # Если нужны теги:
           # git push -f --tags public
