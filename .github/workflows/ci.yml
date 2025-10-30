@@ -8,20 +8,35 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (with pnpm cache)
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'   # кэш зависимостей
-      - uses: pnpm/action-setup@v4
+          cache: 'pnpm'     # кэшируем pnpm-зависимости
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm eslint . --max-warnings=0
-      - run: pnpm tsc -b --noEmit
-      # build можно включить позже, когда добавите секреты БД:
-      # - run: pnpm build
+          run_install: false
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm eslint . --max-warnings=0
+
+      - name: Typecheck
+        run: pnpm tsc -b --noEmit
+
+      # Включишь сборку позже, когда добавим секреты БД:
+      # - name: Build
+      #   run: pnpm build
       #   env:
       #     MONGODB_URI: ${{ secrets.MONGODB_URI }}
       #     PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
