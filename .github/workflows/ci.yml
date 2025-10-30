@@ -29,7 +29,9 @@ jobs:
       - name: Build (skip ESLint)
         env:
           PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          DATABASE_URI:  ${{ secrets.DATABASE_URI }}
+          # дублируем на всякий случай — если где-то в коде смотрят старое имя:
+          MONGODB_URI:  ${{ secrets.DATABASE_URI }}
           NEXT_DISABLE_ESLINT_PLUGIN: "1"
           NODE_OPTIONS: --no-deprecation
         run: pnpm exec next build --no-lint
