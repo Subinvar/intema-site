@@ -56,8 +56,8 @@ jobs:
             # фиксируем удаление (если есть что фиксировать)
             git commit -m "chore(mirror): strip .github/workflows from mirror" || true
             # пушим временную ветку как main зеркала
-            git push -f public mirror-tmp:main
+            git push -f public mirror-tmp:public
           else
             # если в репо нет workflows — обычный пуш
-            git push -f public HEAD:main
+            git push -f public HEAD:public
           fi
