@@ -13,14 +13,14 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
-      # ВАЖНО: без 'version', пусть читает из package.json -> packageManager
+      # pnpm возьмется из package.json -> "packageManager"
       - uses: pnpm/action-setup@v4
 
       - name: Install
         env:
-          HUSKY: '0'
+          HUSKY: "0"
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
@@ -28,6 +28,8 @@ jobs:
 
       - name: Build (skip ESLint)
         env:
-          NEXT_DISABLE_ESLINT_PLUGIN: '1'
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NEXT_DISABLE_ESLINT_PLUGIN: "1"
           NODE_OPTIONS: --no-deprecation
-        run: pnpm -s build
+        run: pnpm exec next build --no-lint
