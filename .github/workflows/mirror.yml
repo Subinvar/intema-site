@@ -1,0 +1,23 @@
+name: Mirror to public
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # берем всю историю
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Push main to mirror
+        env:
+          MIRROR_USERNAME: ${{ secrets.MIRROR_USERNAME }}
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          git remote add public https://${MIRROR_USERNAME}:${MIRROR_TOKEN}@github.com/Subinvar/intema-site-mirror.git
+          git push -f public HEAD:main
