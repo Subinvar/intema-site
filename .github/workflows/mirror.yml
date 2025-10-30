@@ -42,22 +42,16 @@ jobs:
           git remote -v
           git ls-remote --heads public
 
-      # === ГЛАВНОЕ: пушим состояние БЕЗ .github/workflows ===
+      # !!! пушим в ВЕТКУ 'public' (а не main)
       - name: Push to mirror without workflows
         shell: bash
         run: |
           set -euo pipefail
-
           if [ -d ".github/workflows" ]; then
-            # создаем временную ветку от текущего HEAD
             git switch -c mirror-tmp
-            # удаляем workflows из индекса для зеркала
             git rm -r --cached .github/workflows
-            # фиксируем удаление (если есть что фиксировать)
             git commit -m "chore(mirror): strip .github/workflows from mirror" || true
-            # пушим временную ветку как main зеркала
             git push -f public mirror-tmp:public
           else
-            # если в репо нет workflows — обычный пуш
             git push -f public HEAD:public
           fi
