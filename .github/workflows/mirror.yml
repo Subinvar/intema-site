@@ -6,18 +6,36 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout with full history
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # берем всю историю
+          fetch-depth: 0
+
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Push main to mirror
+
+      - name: Prepare mirror remote (safe)
+        shell: bash
         env:
           MIRROR_USERNAME: ${{ secrets.MIRROR_USERNAME }}
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         run: |
-          git remote add public https://${MIRROR_USERNAME}:${MIRROR_TOKEN}@github.com/Subinvar/intema-site-mirror.git
+          set -euo pipefail
+          # На всякий случай убираем, если уже был
+          git remote remove public || true
+          git remote add public "https://${MIRROR_USERNAME}:${MIRROR_TOKEN}@github.com/Subinvar/intema-site-mirror.git"
+          echo "== Remotes =="
+          git remote -v
+          echo "== Auth check =="
+          # Проверка, что доступ есть (если нет — увидим ошибку до push)
+          git ls-remote --heads public || (echo "::error::Auth to mirror failed. Check PAT repo selection and 'Contents: Read and write' permission."; exit 1)
+
+      - name: Push main to mirror (force update)
+        run: |
           git push -f public HEAD:main
+          # Если нужны теги:
+          # git push -f --tags public
