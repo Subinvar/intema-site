@@ -2,7 +2,6 @@ build
 dist / media
 node_modules
 .DS_Store
-.env
 .next
 .vercel
 
@@ -21,3 +20,15 @@ node_modules/
 /playwright/.cache/
 
 *.tsbuildinfo
+
+# добавить правила игнора
+$rules = @"
+
+# Env files
+.env
+.env.*
+*.env
+*.env.*
+!*.env.example
+"@
+Add-Content .gitignore $rules
