@@ -6,9 +6,8 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout with full history
+      - name: Checkout full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -18,24 +17,35 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Prepare mirror remote (safe)
+      # Явно проверяем, что секреты существуют,
+      # и собираем URL с PAT (если нет — падаем с понятной ошибкой)
+      - name: Build mirror URL
+        id: vars
         shell: bash
         env:
           MIRROR_USERNAME: ${{ secrets.MIRROR_USERNAME }}
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         run: |
           set -euo pipefail
-          # На всякий случай убираем, если уже был
-          git remote remove public || true
-          git remote add public "https://${MIRROR_USERNAME}:${MIRROR_TOKEN}@github.com/Subinvar/intema-site-mirror.git"
-          echo "== Remotes =="
-          git remote -v
-          echo "== Auth check =="
-          # Проверка, что доступ есть (если нет — увидим ошибку до push)
-          git ls-remote --heads public || (echo "::error::Auth to mirror failed. Check PAT repo selection and 'Contents: Read and write' permission."; exit 1)
+          if [ -z "${MIRROR_USERNAME:-}" ] || [ -z "${MIRROR_TOKEN:-}" ]; then
+            echo "::error::Secrets MIRROR_USERNAME or MIRROR_TOKEN are empty (set them in Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          echo "url=https://${MIRROR_USERNAME}:${MIRROR_TOKEN}@github.com/Subinvar/intema-site-mirror.git" >> "$GITHUB_OUTPUT"
 
-      - name: Push main to mirror (force update)
+      - name: Add remote and auth check
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote remove public || true
+          git remote add public "${{ steps.vars.outputs.url }}"
+          echo "== git remote -v =="
+          git remote -v
+          echo "== auth check =="
+          git ls-remote --heads public
+
+      - name: Push main to mirror (force)
         run: |
           git push -f public HEAD:main
-          # Если нужны теги:
+          # теги при желании:
           # git push -f --tags public
