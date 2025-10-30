@@ -8,7 +8,7 @@ This template is right for you if you are working on:
 - A content publishing platform with a fully featured publication workflow
 - Exploring the capabilities of Payload
 
-Core features: 
+Core features:
 
 - [Pre-configured Payload Config](#how-it-works)
 - [Authentication](#users-authentication)
@@ -319,4 +319,7 @@ You can also deploy your app manually, check out the [deployment documentation](
 ## Questions
 
 If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+
 # intema-site
+
+test 10/30/2025 12:21:00
