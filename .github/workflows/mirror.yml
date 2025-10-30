@@ -11,17 +11,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false   # <-- критично: не внедрять GITHUB_TOKEN
+          persist-credentials: false
 
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # На всякий случай: убрать лишний extraheader, если вдруг появился
       - name: Remove GitHub extraheader (safety)
-        run: |
-          git config --global --unset-all http.https://github.com/.extraheader || true
+        run: git config --global --unset-all http.https://github.com/.extraheader || true
 
       - name: Build mirror URL
         id: vars
@@ -38,16 +36,28 @@ jobs:
           echo "url=https://${MIRROR_USERNAME}:${MIRROR_TOKEN}@github.com/Subinvar/intema-site-mirror.git" >> "$GITHUB_OUTPUT"
 
       - name: Add remote and auth check
-        shell: bash
         run: |
-          set -euo pipefail
           git remote remove public || true
           git remote add public "${{ steps.vars.outputs.url }}"
           git remote -v
           git ls-remote --heads public
 
-      - name: Push main to mirror (force)
+      # === ГЛАВНОЕ: пушим состояние БЕЗ .github/workflows ===
+      - name: Push to mirror without workflows
+        shell: bash
         run: |
-          git push -f public HEAD:main
-          # Если нужны теги:
-          # git push -f --tags public
+          set -euo pipefail
+
+          if [ -d ".github/workflows" ]; then
+            # создаем временную ветку от текущего HEAD
+            git switch -c mirror-tmp
+            # удаляем workflows из индекса для зеркала
+            git rm -r --cached .github/workflows
+            # фиксируем удаление (если есть что фиксировать)
+            git commit -m "chore(mirror): strip .github/workflows from mirror" || true
+            # пушим временную ветку как main зеркала
+            git push -f public mirror-tmp:main
+          else
+            # если в репо нет workflows — обычный пуш
+            git push -f public HEAD:main
+          fi
