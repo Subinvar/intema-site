@@ -41,13 +41,32 @@ type Reference =
   | { relationTo: "posts"; value: string | PostLike };
 
 /** Это «CMS-ссылка», которую вы прокидываете как {...link} */
+type CMSLinkAppearance =
+  | "default"
+  | "primary"
+  | "secondary"
+  | "link"
+  | "outline"
+  | null;
+
 type CMSLinkData = {
-  type?: "reference" | "custom" | null;   // из CMS: "reference" или "custom"
+  type?: "reference" | "custom" | null; // из CMS: "reference" или "custom"
   newTab?: boolean | null;
   reference?: Reference | null;
   url?: string | null;
   label?: string;
-  appearance?: "default" | "primary" | "secondary" | "link"; // часто встречается в блоках
+  appearance?: CMSLinkAppearance; // часто встречается в блоках
+};
+
+const appearanceVariantMap: Record<
+  Exclude<CMSLinkAppearance, null | undefined>,
+  StyleProps["variant"]
+> = {
+  default: "default",
+  primary: "primary",
+  secondary: "secondary",
+  link: "link",
+  outline: "secondary",
 };
 
 type AnchorBaseProps = Omit<
@@ -110,8 +129,10 @@ const CMSLink = React.forwardRef<HTMLAnchorElement, Props>(function CMSLink(
   const relAttr = newTab ? "noopener noreferrer" : undefined;
 
   // 3) appearance поддерживаем как синоним variant
-  const effectiveVariant =
-    (variant ?? (appearance as StyleProps["variant"])) ?? "default";
+  const variantFromAppearance =
+    appearance == null ? undefined : appearanceVariantMap[appearance];
+
+  const effectiveVariant = (variant ?? variantFromAppearance) ?? "default";
 
   return (
     <NextLink
@@ -127,5 +148,5 @@ const CMSLink = React.forwardRef<HTMLAnchorElement, Props>(function CMSLink(
   );
 });
 
-export default CMSLink;
-export { CMSLink, linkVariants };
+export { CMSLink };
+export type { CMSLinkData };
