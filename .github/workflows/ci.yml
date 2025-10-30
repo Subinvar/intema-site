@@ -1,57 +1,23 @@
 name: CI
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
 
 jobs:
   check:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # Ставим Node без кеша pnpm (иначе экшен попытается дернуть pnpm, которого еще нет)
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      # Устанавливаем pnpm
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+          cache: 'pnpm'
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
-          run_install: false
-
-      # Кешируем стор pnpm (быстро и надежно)
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Show versions (debug)
-        run: |
-          node -v
-          pnpm -v
-
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm eslint . --max-warnings=0
-
-      - name: Typecheck
-        run: pnpm tsc -b --noEmit
-
-      # Сборку включим позже, когда добавим секреты БД:
-      # - name: Build
-      #   run: pnpm build
-      #   env:
-      #     MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      #     PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm eslint . --max-warnings=0
+      - run: pnpm tsc -b --noEmit
+      - run: pnpm test --if-present
+      # e2e можно включить позже (нужен Playwright install):
+      # - run: npx playwright install --with-deps && pnpm e2e
