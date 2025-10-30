@@ -1,66 +1,131 @@
-import { Button, type ButtonProps } from '@/components/ui/button'
-import { cn } from '@/utilities/ui'
-import Link from 'next/link'
-import React from 'react'
+// src/components/Link/index.tsx
+import * as React from "react";
+import NextLink, { type LinkProps as NextLinkProps } from "next/link";
+import { cva, type VariantProps } from "class-variance-authority";
+// если не настроен alias "@", используйте относительный путь: "../../lib/utils"
+import { cn } from "@/lib/utils";
 
-import type { Page, Post } from '@/payload-types'
+/** Варианты оформления (поддерживаем и variant, и appearance) */
+export const linkVariants = cva(
+  "inline-flex items-center transition focus:outline-none focus:ring-2 focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "text-brand hover:underline",
+        link: "underline underline-offset-4",
+        primary: "text-white bg-brand px-3 py-1.5 rounded-md hover:opacity-90",
+        secondary: "text-brand border border-brand px-3 py-1.5 rounded-md hover:bg-brand/10",
+        icon: "p-2 rounded",
+        clear: "",
+      },
+      size: {
+        sm: "text-sm",
+        lg: "text-lg",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "sm",
+    },
+  }
+);
 
-type CMSLinkType = {
-  appearance?: 'inline' | ButtonProps['variant']
-  children?: React.ReactNode
-  className?: string
-  label?: string | null
-  newTab?: boolean | null
-  reference?: {
-    relationTo: 'pages' | 'posts'
-    value: Page | Post | string | number
-  } | null
-  size?: ButtonProps['size'] | null
-  type?: 'custom' | 'reference' | null
-  url?: string | null
-}
+type StyleProps = VariantProps<typeof linkVariants>;
 
-export const CMSLink: React.FC<CMSLinkType> = (props) => {
-  const {
-    type,
-    appearance = 'inline',
-    children,
-    className,
-    label,
+/** Минимальные типы под reference из CMS */
+type PageLike = { slug?: string } | null | undefined;
+type PostLike = { slug?: string } | null | undefined;
+
+type Reference =
+  | { relationTo: "pages"; value: string | PageLike }
+  | { relationTo: "posts"; value: string | PostLike };
+
+/** Это «CMS-ссылка», которую вы прокидываете как {...link} */
+type CMSLinkData = {
+  type?: "reference" | "custom" | null;   // из CMS: "reference" или "custom"
+  newTab?: boolean | null;
+  reference?: Reference | null;
+  url?: string | null;
+  label?: string;
+  appearance?: "default" | "primary" | "secondary" | "link"; // часто встречается в блоках
+};
+
+type AnchorBaseProps = Omit<
+  React.ComponentPropsWithoutRef<"a">,
+  "href" | "className" | "target" | "rel" | "type"
+>;
+
+/** Итоговые пропсы компонента */
+type Props = AnchorBaseProps &
+  StyleProps &
+  CMSLinkData & {
+    href?: NextLinkProps["href"]; // можно задать напрямую, тогда CMS-поля игнорим
+    className?: string;
+    children?: React.ReactNode;
+  };
+
+const CMSLink = React.forwardRef<HTMLAnchorElement, Props>(function CMSLink(
+  {
+    // CMS-поля
+    type: linkType,
     newTab,
     reference,
-    size: sizeFromProps,
     url,
-  } = props
+    label,
+    appearance,
 
-  const href =
-    type === 'reference' && typeof reference?.value === 'object' && reference.value.slug
-      ? `${reference?.relationTo !== 'pages' ? `/${reference?.relationTo}` : ''}/${
-          reference.value.slug
-        }`
-      : url
+    // стили
+    variant,
+    size,
+    className,
 
-  if (!href) return null
+    // базовые html/next props
+    href: hrefProp,
+    children,
+    ...rest
+  },
+  ref
+) {
+  // 1) строим href
+  let href: NextLinkProps["href"] | string | undefined = hrefProp;
 
-  const size = appearance === 'link' ? 'clear' : sizeFromProps
-  const newTabProps = newTab ? { rel: 'noopener noreferrer', target: '_blank' } : {}
+  if (!href) {
+    if (linkType === "custom" && url) {
+      href = url;
+    } else if (linkType === "reference" && reference) {
+      const rel = reference.relationTo;
+      const val = reference.value;
 
-  /* Ensure we don't break any styles set by richText */
-  if (appearance === 'inline') {
-    return (
-      <Link className={cn(className)} href={href || url || ''} {...newTabProps}>
-        {label && label}
-        {children && children}
-      </Link>
-    )
+      // когда value — строка (id) — слага может не быть, тогда fallback на корень
+      const slug =
+        typeof val === "string" ? undefined : val?.slug || undefined;
+
+      if (rel === "pages") href = slug ? `/${slug}` : "/";
+      if (rel === "posts") href = slug ? `/blog/${slug}` : "/blog";
+    }
   }
 
+  // 2) target/rel для newTab
+  const target = newTab ? "_blank" : undefined;
+  const relAttr = newTab ? "noopener noreferrer" : undefined;
+
+  // 3) appearance поддерживаем как синоним variant
+  const effectiveVariant =
+    (variant ?? (appearance as StyleProps["variant"])) ?? "default";
+
   return (
-    <Button asChild className={className} size={size} variant={appearance}>
-      <Link className={cn(className)} href={href || url || ''} {...newTabProps}>
-        {label && label}
-        {children && children}
-      </Link>
-    </Button>
-  )
-}
+    <NextLink
+      href={href || "#"}
+      ref={ref}
+      target={target}
+      rel={relAttr}
+      className={cn(linkVariants({ variant: effectiveVariant, size }), className)}
+      {...rest}
+    >
+      {children ?? label}
+    </NextLink>
+  );
+});
+
+export default CMSLink;
+export { CMSLink, linkVariants };
