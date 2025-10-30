@@ -11,27 +11,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Node из .nvmrc, БЕЗ cache
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
 
-      # Ставим pnpm
+      # ВАЖНО: без 'version', пусть читает из package.json -> packageManager
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.20.0
 
-      # Установка зависимостей (отключим husky на раннере, чтобы не мешал)
       - name: Install
         env:
           HUSKY: '0'
         run: pnpm install --frozen-lockfile
 
-      # Проверка типов
       - name: Typecheck
         run: pnpm exec tsc -b --noEmit
 
-      # Сборка (без eslint, чтобы не упасть на твоём баге)
       - name: Build (skip ESLint)
         env:
           NEXT_DISABLE_ESLINT_PLUGIN: '1'
