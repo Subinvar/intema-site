@@ -43,15 +43,40 @@ jobs:
           git ls-remote --heads public
 
       # !!! пушим в ВЕТКУ 'public' (а не main)
-      - name: Push to mirror without workflows
+      - name: Push to mirror (keep CI workflow only)
         shell: bash
         run: |
           set -euo pipefail
-          if [ -d ".github/workflows" ]; then
-            git switch -c mirror-tmp
-            git rm -r --cached .github/workflows
-            git commit -m "chore(mirror): strip .github/workflows from mirror" || true
-            git push -f public mirror-tmp:public
-          else
+
+          if [ ! -d ".github/workflows" ]; then
+            echo "::warning::.github/workflows directory not found, pushing full tree"
             git push -f public HEAD:public
+            exit 0
           fi
+
+          if [ ! -f ".github/workflows/ci.yml" ]; then
+            echo "::error::.github/workflows/ci.yml is missing, aborting push"
+            exit 1
+          fi
+
+          mirror_tree="$(mktemp -d)"
+          trap 'rm -rf "${mirror_tree}"' EXIT
+
+          git worktree add "${mirror_tree}" HEAD
+          pushd "${mirror_tree}" >/dev/null
+
+          rm -rf .github/workflows
+          mkdir -p .github/workflows
+          cp "${GITHUB_WORKSPACE}/.github/workflows/ci.yml" .github/workflows/ci.yml
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No workflow changes to sync"
+          else
+            git commit -m "chore(mirror): sync workflows"
+          fi
+
+          git push -f public HEAD:public
+
+          popd >/dev/null
+          git worktree remove "${mirror_tree}"
