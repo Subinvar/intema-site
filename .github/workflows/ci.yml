@@ -10,18 +10,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-
-      # pnpm возьмется из package.json -> "packageManager"
       - uses: pnpm/action-setup@v4
 
       - name: Install
-        env:
-          HUSKY: "0"
+        env: { HUSKY: "0" }
         run: pnpm install --frozen-lockfile
+
+      - name: DB ping
+        env:
+          DATABASE_URI: ${{ secrets.DATABASE_URI }}
+          NODE_OPTIONS: --tls-min-v1.2
+        run: |
+          node -e "const { MongoClient } = require('mongodb');(async()=>{const c=new MongoClient(process.env.DATABASE_URI);await c.connect();console.log('DB OK');await c.db().command({ping:1});await c.close();})().catch(e=>{console.error(e);process.exit(1);});"
 
       - name: Typecheck
         run: pnpm exec tsc -b --noEmit
@@ -30,8 +33,6 @@ jobs:
         env:
           PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
           DATABASE_URI:  ${{ secrets.DATABASE_URI }}
-          # дублируем на всякий случай — если где-то в коде смотрят старое имя:
-          MONGODB_URI:  ${{ secrets.DATABASE_URI }}
           NEXT_DISABLE_ESLINT_PLUGIN: "1"
-          NODE_OPTIONS: --no-deprecation
+          NODE_OPTIONS: --no-deprecation --tls-min-v1.2
         run: pnpm exec next build --no-lint
