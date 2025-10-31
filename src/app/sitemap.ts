@@ -12,6 +12,9 @@ const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
  * При необходимости дополни список путей (например, /products, /docs, /news).
  */
 const locales = ['ru', 'en'] as const;
+type Locale = (typeof locales)[number];
+
+const localizedUrl = (locale: Locale, path: string) => `${site}/${locale}${path}`;
 const staticPaths: string[] = [
   '', // корень локали -> /ru, /en
   '/about',
@@ -23,11 +26,9 @@ const staticPaths: string[] = [
  * Хелпер для alternates.languages (hreflang)
  */
 function alternatesFor(path: string) {
-  const map: Record<(typeof locales)[number], string> = {
-    ru: `${site}/ru${path}`,
-    en: `${site}/en${path}`,
-  };
-  return map;
+  return Object.fromEntries(
+    locales.map((locale) => [locale, localizedUrl(locale, path)]),
+  ) as Record<Locale, string>;
 }
 
 /**
@@ -56,45 +57,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   // 1) Статические локализованные URL
-  const localizedStatic = staticPaths.flatMap((path) => {
-    const ruURL = `${site}/ru${path}`;
-    const enURL = `${site}/en${path}`;
-
-    // Две записи — для RU и EN — каждая со своими alternates
-    return [
-      {
-        url: ruURL,
-        lastModified: now,
-        alternates: { languages: alternatesFor(path) },
-      },
-      {
-        url: enURL,
-        lastModified: now,
-        alternates: { languages: alternatesFor(path) },
-      },
-    ];
-  });
+  const localizedStatic = staticPaths.flatMap((path) =>
+    locales.map((locale) => ({
+      url: localizedUrl(locale, path),
+      lastModified: now,
+      alternates: { languages: alternatesFor(path) },
+    })),
+  );
 
   // 2) Динамические локализованные URL (если появятся)
   let localizedDynamic: MetadataRoute.Sitemap = [];
   try {
     const dynamicPaths = await getDynamicPaths();
-    localizedDynamic = dynamicPaths.flatMap((path) => {
-      const ruURL = `${site}/ru${path}`;
-      const enURL = `${site}/en${path}`;
-      return [
-        {
-          url: ruURL,
-          lastModified: now,
-          alternates: { languages: alternatesFor(path) },
-        },
-        {
-          url: enURL,
-          lastModified: now,
-          alternates: { languages: alternatesFor(path) },
-        },
-      ];
-    });
+    localizedDynamic = dynamicPaths.flatMap((path) =>
+      locales.map((locale) => ({
+        url: localizedUrl(locale, path),
+        lastModified: now,
+        alternates: { languages: alternatesFor(path) },
+      })),
+    );
   } catch {
     // Молча игнорируем ошибки БД/инициализации — sitemap всё равно сгенерируется.
   }
