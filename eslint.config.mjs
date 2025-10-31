@@ -1,38 +1,71 @@
-import { dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { FlatCompat } from '@eslint/eslintrc'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+// eslint.config.mjs (ESLint v9, Flat Config)
+import {FlatCompat} from '@eslint/eslintrc';
+import js from '@eslint/js';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
 
 const compat = new FlatCompat({
-  baseDirectory: __dirname,
-})
+  baseDirectory: import.meta.dirname
+});
 
-const eslintConfig = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+export default [
+  // Игноры, чтобы не трогать артефакты
   {
-    rules: {
-      '@typescript-eslint/ban-ts-comment': 'warn',
-      '@typescript-eslint/no-empty-object-type': 'warn',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        {
-          vars: 'all',
-          args: 'after-used',
-          ignoreRestSiblings: false,
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^(_|ignore)',
-        },
-      ],
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'dist/**',
+      'coverage/**',
+      'public/**'
+    ]
+  },
+
+  // Базовые рекомендации JS
+  js.configs.recommended,
+
+  // Конфиг Next (react/react-hooks/jsx-a11y и т.п.) из legacy-мира → через compat
+  ...compat.extends('next/core-web-vitals'),
+
+  // TS-override: говорим ESLint, как парсить *.ts/*.tsx и какие плагины/правила включить
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: {jsx: true}
+        // Если когда-нибудь захочешь type-aware правила, добавь:
+        // project: './tsconfig.json'
+      }
     },
-  },
-  {
-    ignores: ['.next/'],
-  },
-]
+    plugins: {
+      '@typescript-eslint': tsPlugin
+    },
+    rules: {
+      // Базовые правила отключаем в TS-файлах, чтобы не бить по типам/аннотациям
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
 
-export default eslintConfig
+      // TS-aware вариант: мягко предупреждаем об неиспользуемых (не ломаем pre-commit)
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        args: 'none',
+        ignoreRestSiblings: true
+      }],
+
+      // Эти правила у тебя встречаются в директивах — подключаем их, но не валим сборку
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/ban-ts-comment': 'warn'
+    }
+  },
+
+  // Общие настройки
+  {
+    settings: {
+      react: {version: 'detect'}
+    },
+    rules: {
+      'no-console': ['warn', {allow: ['warn', 'error']}]
+    }
+  }
+];

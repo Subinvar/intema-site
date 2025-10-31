@@ -1,4 +1,3 @@
-// storage-adapter-import-placeholder
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 
 import sharp from 'sharp' // sharp-import
@@ -17,10 +16,29 @@ import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
 
+// === Админ-переводы (RU/EN) ===
+import { en } from '@payloadcms/translations/languages/en'
+import { ru } from '@payloadcms/translations/languages/ru'
+
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
+  // ===== Локализация контента (данных) =====
+  // Это включает локали ru/en для всех коллекций/глобалов.
+  // Чтобы конкретные поля были локализуемыми, в их описаниях ставьте `localized: true`.
+  localization: {
+    locales: ['ru', 'en'],
+    defaultLocale: 'ru',
+    fallback: true, // если нет перевода — подставится дефолтная локаль
+  },
+
+  // ===== Локализация админ-панели (UI) =====
+  // Язык админки пользователь выбирает в своём профиле; тут объявляем поддерживаемые языки.
+  i18n: {
+    supportedLanguages: { en, ru },
+  },
+
   admin: {
     components: {
       // The `BeforeLogin` component renders a message that you see while logging into your admin panel.
@@ -57,23 +75,33 @@ export default buildConfig({
       ],
     },
   },
+
   // This config helps us configure global or default features that the other editors can inherit
   editor: defaultLexical,
+
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || '',
   }),
+
   collections: [Pages, Posts, Media, Categories, Users],
+
   cors: [getServerSideURL()].filter(Boolean),
+
   globals: [Header, Footer],
+
   plugins: [
     ...plugins,
     // storage-adapter-placeholder
   ],
+
   secret: process.env.PAYLOAD_SECRET,
+
   sharp,
+
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
+
   jobs: {
     access: {
       run: ({ req }: { req: PayloadRequest }): boolean => {
