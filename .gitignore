@@ -23,12 +23,3 @@ node_modules/
 
 # добавить правила игнора
 $rules = @"
-
-# Env files
-.env
-.env.*
-*.env
-*.env.*
-!*.env.example
-"@
-Add-Content .gitignore $rules
